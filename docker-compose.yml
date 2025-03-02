@@ -5,15 +5,20 @@ services:
     image: postgres:latest
     container_name: adocao_db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=adocao_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: adocao_db
     ports:
       - "5432:5432"
     networks:
       - adocao_network
     volumes:
-      - adocao_data:/var/lib/postgresql/data  # Removido o driver 'postgres' aqui
+      - adocao_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d adocao_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     image: openjdk:17-slim
@@ -22,9 +27,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/adocao_db
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: admin
+      SPRING_DATASOURCE_CONTINUE_ON_ERROR: true
     depends_on:
-      - db
-    command: ["java", "-jar", "/app/api-adocao-0.0.1-SNAPSHOT.jar"]
+      db:
+        condition: service_healthy
+    command:
+      - "java"
+      - "-jar"
+      - "/app/api-adocao-0.0.1-SNAPSHOT.jar"
     volumes:
       - ./target:/app
     ports:
@@ -37,5 +47,4 @@ networks:
     driver: bridge
 
 volumes:
-  adocao_data:  # Volume gerido pelo Docker sem necessidade de driver extra
-    driver: local
+  adocao_data:
